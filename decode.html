@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>単体擬似要素への指定のみでheightを&lt;integer&gt;に変換する</title>
+  <style>
+    hr {
+      all: initial;
+      counter-reset: H;
+    }
+    hr::before {
+      /* ここで設定された値をdecodeする（自作のsymbolicな@counter-styleの有効範囲は0~120） */
+      counter-set: h 3;
+    }
+    hr::before {
+      /* 1行目は好きに表示できる */
+      content: 'aaa' counter(h, h) '\A\A';
+      display: block;
+      white-space: pre;
+      height: 1lh;
+      overflow: hidden;
+      animation: h linear;
+      animation-timeline: scroll(self);
+      animation-range: -1lh;
+      --H: --decode(var(--h));
+    }
+    @counter-style h {
+      system: symbolic;
+      symbols: '\A';
+      fallback: --none;
+    }
+    @counter-style --none {
+      system: cyclic;
+      symbols: '';
+    }
+    /* 非常に安定しており、有効か簡単に判断できる範囲0~120において、<integer>を<number>に変えても正常に動作した */
+    @function --decode(--x <number>) returns <integer> {
+      result: calc(1 / var(--x) - 2);
+    }
+    @keyframes h {
+      to {
+        --h: 1;
+      }
+    }
+    @property --h {
+      syntax: "<number>";
+      inherits: false;
+      initial-value: 0;
+    }
+    hr::before {
+      counter-increment: H var(--H);
+    }
+    hr::after {
+      white-space: pre;
+      content: "y: " counter(H);
+    }
+  </style>
+</head>
+<body>
+  <hr>
+</body>
+</html>

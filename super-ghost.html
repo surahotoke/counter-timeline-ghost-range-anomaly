@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【超意味不明的現象】counter超亡霊現象</title>
+  <style>
+    /*
+      前回の発見により、rangeをピッタリにすることで単体counterでは問題を回避することに成功した。複数カウンターを作り、それぞれにはその回避方法を施したものを用意する。もし、これで失敗するなら更なる解決策が必要になってくるということ。
+      簡単のため2種類のカウンターを使う。
+      ・実際に観測できるのはreの値
+      [想定される挙動]
+      1. hiraganaとkatakanaでどちらのカウンターが使われているかをわかりやすくした上で、rangeを超えた場合にresetスタイルに移行し、'\A\A'により--Hが+2になる。
+      2. それにより、--a()のre 1 lock 1が発動し、reを範囲内の'1'に戻し、lockは'\A\A'になる。
+      3. ついでに次のカウンター（ループ回数の異なるもの）にチェンジさせる。
+      4. lockはその場定義のcounterなので次へは引き継がれない（別階層なので）ので、次の要素ではlockは0にリセットされている。
+      5. 通常の改行なし1が次の要素に伝わるので、counter-incrementにより次の要素では2になり、そのまま続く。
+      [実際の挙動]
+      - とても謎になった（全然わからん）
+      ↓
+      [回避方法！]
+      不明
+    */
+    /*
+      （補足1）counter-reset, counter-increment, counter-setはプロパティ記述順に関係なくこの順番固定で適用される。
+      （補足2）新規作成したcounterは自身と後続兄弟要素とそれらの全ての子孫の要素、擬似要素の範囲で値を流していく。
+      （補足3）各プロパティの説明
+      簡単な説明
+      - counter-reset：counterの新規作成
+      - counter-set：存在するcounterの値の途中変更
+      - counter-increment：存在するcounterの値の増減
+      - （setとincrementはcounterが無い場合は勝手にcounterを作る）
+      |  一覧表  | counter-reset | counter-set | counter-increment |
+      |   ---   |      ---      |     ---     |        ---        |
+      | 新規作成 |      常に      |  （無い場合） |     （無い場合）    |
+      |  値代入  |      可能      |     可能    |        不可能      |
+      |  値増減  |      不可能    |    不可能    |        可能       |
+    */
+    body {
+      counter-reset: re re-change 1;
+    }
+    .a::before {
+      content: "lock：" counter(lock) "、re：" counter(re)  "（before）";
+      color: red;
+      font-size: 11px;
+    }
+    .a::after {
+      white-space: pre;
+      /*
+        lock：reがtest4やtest13の値の範囲を超えてリセットが発動したなら1になるcounter。想定される挙動とは異なる挙動をする。
+        re：メインの観測可能なcounterで、想定される挙動とは異なる挙動をする。
+        ここで簡単に切り替えれるので観察できる。同じように作ることでカウンターを増やして観察することも簡単。
+      */
+      --counter-change: if(
+        style(mod(var(--H), 2) = 0): test4;
+        else: test13;
+      );
+      content: "lock：" counter(lock) "、re：" counter(re) counter(re, var(--counter-change)) counter(lock, lock) counter(re-change, re-change) '\A\A';
+      display: block;
+      height: 1lh;
+      overflow: hidden;
+      animation: h linear;
+      animation-timeline: scroll(self);
+      animation-range: -1lh;
+      --H: --decode(var(--h));
+      --re-change: if(
+        style(var(--H) > 1): re-change;
+        else:;
+      );
+      counter-increment: re var(--re-change);
+      --re-set: if(style(var(--H) > 1): re 1 lock 1;);
+      counter-set: var(--re-set);
+    }
+    @counter-style test4 {
+      system: extends hiragana;
+      range: 1 4;
+      fallback: reset4;
+    }
+    @counter-style test13 {
+      system: extends katakana;
+      range: 1 13;
+      fallback: reset13;
+    }
+    @counter-style reset4 {
+      system: cyclic;
+      symbols: '\A\A';
+      range: 5 5;
+    }
+    @counter-style reset13 {
+      system: cyclic;
+      symbols: '\A\A';
+      range: 14 14;
+    }
+    @counter-style re-change {
+      system: cyclic;
+      symbols: '' '\A';
+    }
+    @counter-style lock {
+      system: fixed;
+      symbols: '\A\A';
+      fallback: --none;
+    }
+    @counter-style --none {
+      system: cyclic;
+      symbols: '';
+    }
+    @function --decode(--x <number>) returns <integer> {
+      result: calc(1 / var(--x) - 2);
+    }
+    @keyframes h {
+      to {
+        --h: 1;
+      }
+    }
+    @property --h {
+      syntax: "<number>";
+      inherits: false;
+      initial-value: 0;
+    }
+    @property --H {
+      syntax: "<integer>";
+      inherits: false;
+      initial-value: 0;
+    }
+  </style>
+</head>
+<body>
+  超謎すぎよ
+  <!--
+    想定される挙動：
+    1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2...
+    あいうえアイウエオカキクケコサシスあいうえアイウエオカキクケコサシスあいうえアイ...
+    実際の挙動（毎回固定）：
+    1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,1,2...
+    あいうえアイウエあいうえアイウエあいうえアあいうえアイウエあいうえアイウエあアイ...
+    発生条件（最初の方だけ一応推測。何もわからない）：
+    複数の長さのcounterをlock手法で切り替えて複数種類のループをさせる場合
+    最初の亡霊現象はうまく抑え込めてると思いきや、実は次までは亡霊区間が続いており、その最初の亡霊区間を終えた後に次のカウンターの亡霊が生まれるみたいな（?????）
+
+    この現象はChromeだけでなく、EdgeとOperaでも同じく発生します。
+    SafariとFirefoxはそもそもanimation-timelineや@functionなどが無効なため動かないです。
+  -->
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【意味不明的現象】counter亡霊現象とrange脱出現象</title>
+  <style>
+    /*
+      ・実際に観測できるのはreの値
+      ・亡霊reは、このバグが発生するならば存在しているはずの架空のcounter値
+      [想定される挙動]
+      1. --hiraganaのrangeである1 5を超えた場合にresetスタイルに移行し、'\A'により--Hが1になる。
+      2. それにより、--a()のre 1 lock 1が発動し、reを範囲内の'1'に戻し、lockは'\A'になる。（つまり、reが'\A'になったことをlockに譲渡し、reは通常に戻る）
+      3. lockはその場定義のcounterなので次へは引き継がれない（別階層なので）ので、次の要素では0にリセットされている。
+      4. 通常の改行なし'1'が次の要素に伝わるので、counter-incrementにより次の要素では'2'が表示される。
+      [実際の挙動]
+      1. 同じ
+      2. 同じ
+      3. 同じ
+      4. 工程1,2,3まで同じなのになぜか'2'にならず、lockもreも1になる状態（counter亡霊現象）がrangeの間だけ続く。
+      5. rangeを抜けた場合後、なぜか想定される挙動に戻る。（range脱出現象）
+      ↓
+      [回避方法！]
+      resetのrangeをピッタリに設定する！（rangeで抜けるのでここを合わせるとcounter亡霊現象を回避できる）
+    */
+    /*
+      （補足1）counter-reset, counter-increment, counter-setはプロパティ記述順に関係なくこの順番固定で適用される。
+      （補足2）新規作成したcounterは自身と後続兄弟要素とそれらの全ての子孫の要素、擬似要素の範囲で値を流していく。
+      （補足3）各プロパティの説明
+      簡単な説明
+      - counter-reset：counterの新規作成
+      - counter-set：存在するcounterの値の途中変更
+      - counter-increment：存在するcounterの値の増減
+      - （setとincrementはcounterが無い場合は勝手にcounterを作る）
+      |  一覧表  | counter-reset | counter-set | counter-increment |
+      |   ---   |      ---      |     ---     |        ---        |
+      | 新規作成 |      常に      |  （無い場合） |     （無い場合）    |
+      |  値代入  |      可能      |     可能    |        不可能      |
+      |  値増減  |      不可能    |    不可能    |        可能       |
+    */
+    body {
+      counter-reset: re ghost;
+    }
+    .a::before {
+      content: "lock：" counter(lock) "、re：" counter(re)  "（before）";
+      color: red;
+      font-size: 11px;
+    }
+    .a::after {
+      white-space: pre;
+      /*
+        lock：reが--hiraganaの値の範囲を超えてリセットが発動したなら1になるcounter。beforeなど見て値自体は正しいはずなのに想定される挙動とは異なる挙動をする。
+        re：メインの観測可能なcounterで、値自体は正しいはずなのに想定される挙動とは異なる挙動をする。
+        亡霊re：値の観測は不可能だが、発生する謎挙動から考えて存在されると仮定される謎のcounter値
+      */
+      content: "lock：" counter(lock) "、re：" counter(re)"（亡霊re：" counter(ghost, ghost) "）" counter(re, --hiragana) counter(lock, lock) '\A\A';
+      display: block;
+      height: 1lh;
+      overflow: hidden;
+      animation: h linear;
+      animation-timeline: scroll(self);
+      animation-range: -1lh;
+      --H: --decode(var(--h));
+      counter-increment: re ghost;
+      /*
+        lock手法：
+        1. ちょうどループを終えたタイミングでfallbackにより--Hを1にすることでその情報を観測する。
+        2. このままでは次の要素へ渡す際にループを終えた状態であることが伝わってしまい、incrementはsetにより毎回上書きされてしまうので、それを回避するために--Hが1である情報をlockに譲渡させる。
+        3. 譲渡させるのと同時にreを安全圏内の1に設定することで、--Hを1にしたままreのcounterの値を1へすることができる。
+        4. 次の要素へはループを終えた情報（--Hが1である）は伝えずに、counterの値1を伝えることができる。
+      */
+      --re-set: if(style(--H: 1): re 1 lock 1;else:;);
+      counter-set: var(--re-set);
+    }
+    @counter-style --hiragana {
+      system: extends hiragana;
+      range: 1 5;
+      fallback: reset;
+    }
+    @counter-style reset {
+      system: cyclic;
+      symbols: '\A';
+      /* rangeの範囲（8）を亡霊reカウンターの値が超えた途端謎現象から謎脱出する */
+      range: 0 8;
+      /* ↓こっちにするとrangeがピッタリ--hiraganaのrange: 1 5;の次の6までとなるので亡霊現象を回避できる！ */
+      /* range: 0 6; */
+    }
+    @counter-style lock {
+      system: fixed;
+      symbols: '\A';
+      fallback: --none;
+    }
+    @counter-style --none {
+      system: cyclic;
+      symbols: '';
+    }
+    /* 分かりやすくするために用意したもの。これ自体は挙動への影響はない */
+    @counter-style ghost {
+      system: cyclic;
+      symbols: '1' '2' '3' '4' '5' '6' '7' '8';
+    }
+    @function --decode(--x <number>) returns <integer> {
+      result: calc(1 / var(--x) - 2);
+    }
+    @keyframes h {
+      to {
+        --h: 1;
+      }
+    }
+    @property --h {
+      syntax: "<number>";
+      inherits: false;
+      initial-value: 0;
+    }
+    @property --H {
+      syntax: "<integer>";
+      inherits: false;
+      initial-value: 0;
+    }
+  </style>
+</head>
+<body>
+  謎すぎよ
+  <!--
+    想定される挙動：
+    1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5...
+    実際の挙動（毎回固定）：
+    1,2,3,4,5,1,1,1,2,3,4,5,1,1,1,2,3,4,5,1...
+    発生条件：
+    1つのcounterをlock手法を使ってループをさせる場合
+    animation-timelineを使って出した値をcounter-setやcounter-incrementに使ったりするとき（??）
+
+    この現象はChromeだけでなく、EdgeとOperaでも同じく発生します。
+    SafariとFirefoxはそもそもanimation-timelineや@functionなどが無効なため動かないです。
+  -->
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+</body>
+</html>

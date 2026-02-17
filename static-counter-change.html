@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>counter超亡霊現象補足（通常指定なら通る）</title>
+  <style>
+    body {
+      counter-reset: re;
+    }
+    .a::after {
+      content: "re：" counter(re) counter(re, test4);
+      counter-increment: re;
+    }
+    .a:nth-child(5)::after,
+    .a:nth-child(18)::after,
+    .a:nth-child(22)::after,
+    .a:nth-child(35)::after,
+    .a:nth-child(39)::after {
+      counter-set: re 1;
+    }
+    .a:nth-child(n+5):nth-child(-n+17)::after,
+    .a:nth-child(n+22):nth-child(-n+34)::after,
+    .a:nth-child(n+39):nth-child(-n+51)::after {
+      content: "re：" counter(re) counter(re, test13);
+    }
+    @counter-style test4 {
+      system: extends hiragana;
+      range: 1 4;
+      fallback: reset4;
+    }
+    @counter-style test13 {
+      system: extends katakana;
+      range: 1 13;
+      fallback: reset13;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    想定される挙動：
+    1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2...
+    あいうえアイウエオカキクケコサシスあいうえアイウエオカキクケコサシスあいうえアイ...
+    実際の挙動：
+    同じ
+  -->
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+  <div class="a"></div>
+</body>
+</html>

@@ -17,6 +17,7 @@ CSSの `counter`・`@counter-style`・`animation-timeline` を組み合わせた
 - [decode.html](https://surahotoke.github.io/counter-timeline-ghost-range-anomaly/decode.html)
 - [ghost.html](https://surahotoke.github.io/counter-timeline-ghost-range-anomaly/ghost.html)
 - [super-ghost.html](https://surahotoke.github.io/counter-timeline-ghost-range-anomaly/super-ghost.html)
+- [static-counter-change.html](https://surahotoke.github.io/counter-timeline-ghost-range-anomaly/static-counter-change.html)
 
 ## counterの前提知識
 
@@ -202,3 +203,21 @@ SafariとFirefoxはそもそも`animation-timeline`や`@function`などが無効
 
 この現象はChromeだけでなく、EdgeとOperaでも同じく発生します。
 SafariとFirefoxはそもそも`animation-timeline`や`@function`などが無効なため動かないです。
+
+# static-counter-change.html
+
+## counter超亡霊現象補足（通常指定なら通る）
+
+超亡霊現象はtimelineを使って動的に更新する場合にしか発生しないことを示すファイル。
+
+#### 想定される挙動
+
+```
+1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2,3,4,5,6,7,8,9,10,11,12,13,1,2,3,4,1,2...
+
+あいうえアイウエオカキクケコサシスあいうえアイウエオカキクケコサシスあいうえアイ...
+```
+
+#### 実際の挙動
+
+同じ
